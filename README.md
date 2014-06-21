@@ -12,7 +12,7 @@ Given two views, v1 and v2:
 	let v2 = NSView(frame: NSRect.zeroRect)
 	v1.addSubview(v2)
 
-Add constraints visually like so:
+Add constraints in shorthand form like so:
 
 	v1.addConstraints([
 		v1.layoutTop() == v2.layoutTop(),
