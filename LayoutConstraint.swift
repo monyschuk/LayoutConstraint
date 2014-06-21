@@ -7,26 +7,21 @@
 //
 
 #if os(iOS)
-    
     import UIKit
+    
     typealias LayoutView = UIView
     typealias LayoutPriority = UILayoutPriority
     
 #elseif os(OSX)
 
     import Cocoa
+    
     typealias LayoutView = NSView
     typealias LayoutPriority = NSLayoutPriority
-    
 #endif
 
 struct LayoutAttribute {
-    init(view: LayoutView, attribute: NSLayoutAttribute) {
-        self.view = view
-        self.attribute = attribute
-    }
-    
-    var view: LayoutView
+    var view: LayoutView?
     var attribute: NSLayoutAttribute
 }
 
@@ -37,31 +32,69 @@ struct LayoutRelation {
         self.operator = operator
     }
     
-    var operator: NSLayoutRelation
     var from, to: LayoutAttribute
+    var operator: NSLayoutRelation
     
     // optional
     
     var constant = 0.0
     var multiplier = 1.0
     var priority :LayoutPriority = 1000
-    
 }
 
-enum LayoutOption {
-    case constant(Double), multiplier(Double), priority(LayoutPriority)
-}
-
+// Attribute-Attribute relations
 @infix func ==(lhs: LayoutAttribute, rhs: LayoutAttribute) -> LayoutRelation {
     return LayoutRelation(from: lhs, operator: .Equal, to: rhs)
 }
-
 @infix func <=(lhs: LayoutAttribute, rhs: LayoutAttribute) -> LayoutRelation {
     return LayoutRelation(from: lhs, operator: .LessThanOrEqual, to: rhs)
 }
-
 @infix func >=(lhs: LayoutAttribute, rhs: LayoutAttribute) -> LayoutRelation {
     return LayoutRelation(from: lhs, operator: .GreaterThanOrEqual, to: rhs)
+}
+
+// Attribute-Constant relations
+@infix func ==(lhs: LayoutAttribute, rhs: Double) -> LayoutRelation {
+    var to = LayoutAttribute(view: nil, attribute: .NotAnAttribute)
+    var relation = LayoutRelation(from: lhs, operator: .Equal, to: to)
+    relation.constant = rhs
+    return relation
+}
+@infix func <=(lhs: LayoutAttribute, rhs: Double) -> LayoutRelation {
+    var to = LayoutAttribute(view: nil, attribute: .NotAnAttribute)
+    var relation = LayoutRelation(from: lhs, operator: .LessThanOrEqual, to: to)
+    relation.constant = rhs
+    return relation
+}
+@infix func >=(lhs: LayoutAttribute, rhs: Double) -> LayoutRelation {
+    var to = LayoutAttribute(view: nil, attribute: .NotAnAttribute)
+    var relation = LayoutRelation(from: lhs, operator: .GreaterThanOrEqual, to: to)
+    relation.constant = rhs
+    return relation
+}
+
+@infix func ==(lhs: LayoutAttribute, rhs: Int) -> LayoutRelation {
+    var to = LayoutAttribute(view: nil, attribute: .NotAnAttribute)
+    var relation = LayoutRelation(from: lhs, operator: .Equal, to: to)
+    relation.constant = Double(rhs)
+    return relation
+}
+@infix func <=(lhs: LayoutAttribute, rhs: Int) -> LayoutRelation {
+    var to = LayoutAttribute(view: nil, attribute: .NotAnAttribute)
+    var relation = LayoutRelation(from: lhs, operator: .LessThanOrEqual, to: to)
+    relation.constant = Double(rhs)
+    return relation
+}
+@infix func >=(lhs: LayoutAttribute, rhs: Int) -> LayoutRelation {
+    var to = LayoutAttribute(view: nil, attribute: .NotAnAttribute)
+    var relation = LayoutRelation(from: lhs, operator: .GreaterThanOrEqual, to: to)
+    relation.constant = Double(rhs)
+    return relation
+}
+
+
+enum LayoutOption {
+    case constant(Double), multiplier(Double), priority(LayoutPriority)
 }
 
 @infix func &&(var lhs: LayoutRelation, rhs: LayoutOption) -> LayoutRelation {
@@ -72,6 +105,24 @@ enum LayoutOption {
     }
     return lhs
 }
+
+
+// An extension to NSView and UIView allowing constraints to be specified in a compact,
+// descriptive format:
+//
+// let v1 = NSView(frame: NSRect.zeroRect)
+// let v2 = NSView(frame: NSRect.zeroRect)
+//
+// v1.addSubview(v2)
+//
+// v1.addConstraints([
+//  v1.layoutLeft() == v2.layoutLeft(),
+//  v1.layoutRight() == v2.layoutRight() && .priority(750),
+//  v1.layoutCenterY() == v2.layoutCenterY() && .constant(-10.0)
+// ])
+//
+// v2.addConstraint(v2.layoutHeight() == 14)
+//
 
 extension LayoutView {
     
@@ -96,15 +147,27 @@ extension LayoutView {
     // Adding Constraint(s)
     
     func addConstraint(relation: LayoutRelation) -> NSLayoutConstraint {
-        let layoutConstraint = NSLayoutConstraint(item: relation.from.view, attribute: relation.from.attribute, relatedBy: relation.operator, toItem: relation.to.view, attribute: relation.to.attribute, multiplier: relation.multiplier, constant: relation.constant)
+        
+        let layoutConstraint = NSLayoutConstraint(
+            item:       relation.from.view,
+            attribute:  relation.from.attribute,
+            
+            relatedBy:  relation.operator,
+            
+            toItem:     relation.to.view,
+            attribute:  relation.to.attribute,
+            
+            multiplier: relation.multiplier,
+            constant:   relation.constant)
+        
         layoutConstraint.priority = relation.priority
         
         self.addConstraint(layoutConstraint)
-        
         return layoutConstraint
     }
     
     func addConstraints(constraints: Array<LayoutRelation>) -> Array<NSLayoutConstraint> {
+        
         var result: Array<NSLayoutConstraint> = []
         
         for relation in constraints {
@@ -122,9 +185,10 @@ func example() {
     v2.addSubview(v1)
     
     v2.addConstraints([
-        v1.layoutTop() == v2.layoutTop() && .constant(10) && .priority(750),
-        v1.layoutBottom() == v2.layoutBottom(),
-        v1.layoutLeading()  == v2.layoutLeading(),
-        v1.layoutTrailing() == v2.layoutTrailing()
+        v1.layoutLeft() == v2.layoutLeft(),
+        v1.layoutRight() == v2.layoutRight(),
+        v1.layoutCenterY() == v2.layoutCenterY() && .priority(750)
         ])
+
+    v1.addConstraint(v1.layoutHeight() == 24.0)
 }
