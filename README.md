@@ -44,7 +44,7 @@ Layout Expression Grammar
 	
 	layout-expression := 
 		relation-expression 
-		| relation-expression '&&' option-expression
+		| layout-expression '&&' option-expression
 
 License
 -------
