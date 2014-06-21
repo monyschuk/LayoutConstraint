@@ -30,6 +30,13 @@ You can optionally specify constants, multipliers, and priority inline with your
 		v1.layoutTrailing() >= v2.layoutTrailing()
 	])
 
+Layout Expression Grammar
+-------------------------
+
+	relation-expression := layout-attribute ( '==' | '<=' | '>=' ) layout-attribute
+	option-expression := .constant(value) | .multiplier(value) | .priority(value)
+	layout-expression := relation-expression | relation-expression '&&' option-expression
+
 License
 -------
 
