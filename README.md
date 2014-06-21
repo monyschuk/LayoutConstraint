@@ -33,9 +33,18 @@ You can optionally specify constants, multipliers, and priority inline with your
 Layout Expression Grammar
 -------------------------
 
-	relation-expression := layout-attribute ( '==' | '<=' | '>=' ) layout-attribute | layout-attribute ( '==' | '<=' | '>=' ) value
-	option-expression := .constant(value) | .multiplier(value) | .priority(value)
-	layout-expression := relation-expression | relation-expression '&&' option-expression
+	relation-expression :=
+		layout-attribute ( '==' | '<=' | '>=' ) value 
+		| layout-attribute ( '==' | '<=' | '>=' ) layout-attribute
+	
+	option-expression := 
+		.priority(value) 
+		| .constant(value) 
+		| .multiplier(value)
+	
+	layout-expression := 
+		relation-expression 
+		| relation-expression '&&' option-expression
 
 License
 -------
