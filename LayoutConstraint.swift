@@ -1,5 +1,5 @@
 //
-//  LayoutConstraint.swift
+//  Autolayout.swift
 //  Matrix
 //
 //  Created by Mark Onyschuk on 2014-06-19.
@@ -13,7 +13,7 @@
     typealias LayoutPriority = UILayoutPriority
     
 #elseif os(OSX)
-
+    
     import Cocoa
     
     typealias LayoutView = NSView
@@ -40,6 +40,25 @@ struct LayoutRelation {
     var constant = 0.0
     var multiplier = 1.0
     var priority :LayoutPriority = 1000
+    
+    var layoutConstraint: NSLayoutConstraint {
+        let layoutConstraint = NSLayoutConstraint(
+            item:       self.from.view,
+            attribute:  self.from.attribute,
+            
+            relatedBy:  self.operator,
+            
+            toItem:     self.to.view,
+            attribute:  self.to.attribute,
+            
+            multiplier: CGFloat(self.multiplier),
+            constant:   CGFloat(self.constant))
+        
+        layoutConstraint.priority = self.priority
+
+        return layoutConstraint
+    }
+    
 }
 
 // Attribute-Attribute relations
@@ -116,79 +135,123 @@ enum LayoutOption {
 // v1.addSubview(v2)
 //
 // v1.addConstraints([
-//  v1.layoutLeft() == v2.layoutLeft(),
-//  v1.layoutRight() == v2.layoutRight() && .priority(750),
-//  v1.layoutCenterY() == v2.layoutCenterY() && .constant(-10.0)
+//  v1.layoutLeft == v2.layoutLeft,
+//  v1.layoutRight == v2.layoutRight && .priority(750),
+//  v1.layoutCenterY == v2.layoutCenterY && .constant(-10.0)
 // ])
 //
-// v2.addConstraint(v2.layoutHeight() == 14)
+// v2.addConstraint(v2.layoutHeight == 14)
 //
 
 extension LayoutView {
     
-    // NOTE: declared as functions to avoid a Swift compiler bug in DP2
+    var layoutTop:      LayoutAttribute {return LayoutAttribute(view: self, attribute: .Top)}
+    var layoutLeft:     LayoutAttribute {return LayoutAttribute(view: self, attribute: .Left)}
+    var layoutRight:    LayoutAttribute {return LayoutAttribute(view: self, attribute: .Right)}
+    var layoutBottom:   LayoutAttribute {return LayoutAttribute(view: self, attribute: .Bottom)}
     
-    func layoutTop()        -> LayoutAttribute {return LayoutAttribute(view: self, attribute: .Top)}
-    func layoutLeft()       -> LayoutAttribute {return LayoutAttribute(view: self, attribute: .Left)}
-    func layoutRight()      -> LayoutAttribute {return LayoutAttribute(view: self, attribute: .Right)}
-    func layoutBottom()     -> LayoutAttribute {return LayoutAttribute(view: self, attribute: .Bottom)}
+    var layoutLeading:  LayoutAttribute {return LayoutAttribute(view: self, attribute: .Leading)}
+    var layoutTrailing: LayoutAttribute {return LayoutAttribute(view: self, attribute: .Trailing)}
     
-    func layoutLeading()    -> LayoutAttribute {return LayoutAttribute(view: self, attribute: .Leading)}
-    func layoutTrailing()   -> LayoutAttribute {return LayoutAttribute(view: self, attribute: .Trailing)}
+    var layoutWidth:    LayoutAttribute {return LayoutAttribute(view: self, attribute: .Width)}
+    var layoutHeight:   LayoutAttribute {return LayoutAttribute(view: self, attribute: .Height)}
     
-    func layoutWidth()      -> LayoutAttribute {return LayoutAttribute(view: self, attribute: .Width)}
-    func layoutHeight()     -> LayoutAttribute {return LayoutAttribute(view: self, attribute: .Height)}
+    var layoutCenterX:  LayoutAttribute {return LayoutAttribute(view: self, attribute: .CenterX)}
+    var layoutCenterY:  LayoutAttribute {return LayoutAttribute(view: self, attribute: .CenterY)}
     
-    func layoutCenterX()    -> LayoutAttribute {return LayoutAttribute(view: self, attribute: .CenterX)}
-    func layoutCenterY()    -> LayoutAttribute {return LayoutAttribute(view: self, attribute: .CenterY)}
-    
-    func layoutBaseline()   -> LayoutAttribute {return LayoutAttribute(view: self, attribute: .Baseline)}
+    var layoutBaseline: LayoutAttribute {return LayoutAttribute(view: self, attribute: .Baseline)}
     
     // Adding Constraint(s)
     
     func addConstraint(relation: LayoutRelation) -> NSLayoutConstraint {
         
-        let layoutConstraint = NSLayoutConstraint(
-            item:       relation.from.view,
-            attribute:  relation.from.attribute,
-            
-            relatedBy:  relation.operator,
-            
-            toItem:     relation.to.view,
-            attribute:  relation.to.attribute,
-            
-            multiplier: relation.multiplier,
-            constant:   relation.constant)
-        
-        layoutConstraint.priority = relation.priority
-        
+        let layoutConstraint = relation.layoutConstraint
         self.addConstraint(layoutConstraint)
         return layoutConstraint
     }
     
-    func addConstraints(constraints: Array<LayoutRelation>) -> Array<NSLayoutConstraint> {
+    func addConstraints(constraints: [LayoutRelation]) -> [NSLayoutConstraint] {
         
-        var result: Array<NSLayoutConstraint> = []
-        
+        var result: [NSLayoutConstraint] = []
         for relation in constraints {
             result.append(addConstraint(relation))
         }
-        
         return result
     }
 }
 
-func example() {
-    var v1: NSView = NSView(frame: NSRect.zeroRect)
-    var v2: NSView = NSView(frame: NSRect.zeroRect)
-        
-    v2.addSubview(v1)
-    
-    v2.addConstraints([
-        v1.layoutLeft() == v2.layoutLeft(),
-        v1.layoutRight() == v2.layoutRight(),
-        v1.layoutCenterY() == v2.layoutCenterY() && .priority(750)
-        ])
+// Layouts
 
-    v1.addConstraint(v1.layoutHeight() == 24.0)
+protocol Layout {
+    typealias ViewType
+    
+    var views: [ViewType] {get}
+    var constraints: [NSLayoutConstraint] {get}
+}
+
+// Common Layouts:
+
+// ListLayout represents a vertical or horizontal list of views within a parent view - eg.
+// horizontalButtonLayout = ListLayout(views: buttons, container: buttonContainer, orientation: .Horizontal, trailingRelationFn: ==)
+
+typealias LayoutRelationFn = (LayoutAttribute, LayoutAttribute) -> LayoutRelation
+
+class ListLayout<T: LayoutView>: Layout {
+    
+    var container: LayoutView
+    var orientation: NSLayoutConstraintOrientation
+    var trailingRelationFn: LayoutRelationFn!
+    
+    init(views: [T], container: LayoutView, orientation: NSLayoutConstraintOrientation, trailingRelationFn: LayoutRelationFn! = nil) {
+        self.views              = views
+        self.container          = container
+        self.orientation        = orientation
+        self.trailingRelationFn = trailingRelationFn
+
+        // layout builder
+        var prev: T! = nil
+        
+        var axisRelations = [LayoutRelation]()
+        var offAxisRelations = [LayoutRelation]()
+        
+        for v in self.views {
+            if v.superview != self.container {
+                self.container.addSubview(v)
+            }
+            
+            switch self.orientation {
+            case .Vertical:
+                axisRelations += (v.layoutTop == (prev ? prev.layoutBottom : v.superview.layoutTop)) && .priority(750)
+                offAxisRelations += [v.layoutLeft == v.superview.layoutLeft && .priority(750), v.layoutRight == v.superview.layoutRight && .priority(750)]
+                
+            case .Horizontal:
+                axisRelations += (v.layoutLeading == (prev ? prev.layoutTrailing : v.superview.layoutLeading)) && .priority(750)
+                offAxisRelations += [v.layoutTop == v.superview.layoutTop && .priority(750), v.layoutBottom == v.superview.layoutBottom && .priority(750)]
+            }
+            
+            prev = v
+        }
+        
+        if prev {
+            if self.trailingRelationFn {
+                switch self.orientation {
+                case .Vertical:
+                    axisRelations += self.trailingRelationFn(prev.layoutBottom, prev.superview.layoutBottom) && .priority(750)
+                case .Horizontal:
+                    axisRelations += self.trailingRelationFn(prev.layoutTrailing, prev.superview.layoutTrailing) && .priority(750)
+                }
+            }
+        }
+
+        self.axisConstraints    = axisRelations.map {$0.layoutConstraint}
+        self.offAxisConstraints = offAxisRelations.map {$0.layoutConstraint}
+    }
+    
+    // Layout Protocol
+    var views: [T]
+    var constraints: [NSLayoutConstraint] { return self.axisConstraints + self.offAxisConstraints }
+
+    // Layout Protocol Support
+    var axisConstraints: [NSLayoutConstraint] // constraints along self.orientation
+    var offAxisConstraints: [NSLayoutConstraint] // constraints perpendicular to self.orientation
 }
