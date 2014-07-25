@@ -15,19 +15,19 @@ Given two views, v1 and v2:
 Add constraints in shorthand form like so:
 
 	v1.addConstraints([
-		v1.layoutCenterY() == v2.layoutCenterY(),
-		v1.layoutLeading() == v2.layoutLeading(),
-		v1.layoutTrailing() == v2.layoutTrailing()
+		v1.layoutCenterY == v2.layoutCenterY,
+		v1.layoutLeading == v2.layoutLeading,
+		v1.layoutTrailing == v2.layoutTrailing
 	])
-	v2.addConstraint(v2.layoutHeight() == 12)
+	v2.addConstraint(v2.layoutHeight == 12)
     
 You can optionally specify constants, multipliers, and priority inline with your definition:
 
 	v1.addConstraints([
-		v1.layoutTop() == v2.layoutTop() && .constant(10) && .priority(750),
-		v1.layoutBottom() == v2.layoutBottom(),
-		v1.layoutLeading() == v2.layoutLeading(),
-		v1.layoutTrailing() == v2.layoutTrailing()
+		v1.layoutTop == v2.layoutTop && .constant(10) && .priority(750),
+		v1.layoutBottom == v2.layoutBottom,
+		v1.layoutLeading == v2.layoutLeading,
+		v1.layoutTrailing == v2.layoutTrailing
 	])
 
 Layout Expression Grammar
