@@ -26,27 +26,27 @@ struct LayoutAttribute {
 }
 
 struct LayoutRelation {
-    init(from: LayoutAttribute, operator: NSLayoutRelation, to: LayoutAttribute) {
+    init(from: LayoutAttribute, relationship: NSLayoutRelation, to: LayoutAttribute) {
         self.to = to
         self.from = from
-        self.operator = operator
+        self.relationship = relationship
     }
     
     var from, to: LayoutAttribute
-    var operator: NSLayoutRelation
+    var relationship: NSLayoutRelation
     
     // optional
     
     var constant = 0.0
     var multiplier = 1.0
-    var priority :LayoutPriority = 1000
+    var priority = LayoutPriority(1000)
     
     var layoutConstraint: NSLayoutConstraint {
         let layoutConstraint = NSLayoutConstraint(
             item:       self.from.view,
             attribute:  self.from.attribute,
             
-            relatedBy:  self.operator,
+            relatedBy:  self.relationship,
             
             toItem:     self.to.view,
             attribute:  self.to.attribute,
@@ -62,51 +62,51 @@ struct LayoutRelation {
 }
 
 // Attribute-Attribute relations
-@infix func ==(lhs: LayoutAttribute, rhs: LayoutAttribute) -> LayoutRelation {
-    return LayoutRelation(from: lhs, operator: .Equal, to: rhs)
+func ==(lhs: LayoutAttribute, rhs: LayoutAttribute) -> LayoutRelation {
+    return LayoutRelation(from: lhs, relationship: .Equal, to: rhs)
 }
-@infix func <=(lhs: LayoutAttribute, rhs: LayoutAttribute) -> LayoutRelation {
-    return LayoutRelation(from: lhs, operator: .LessThanOrEqual, to: rhs)
+func <=(lhs: LayoutAttribute, rhs: LayoutAttribute) -> LayoutRelation {
+    return LayoutRelation(from: lhs, relationship: .LessThanOrEqual, to: rhs)
 }
-@infix func >=(lhs: LayoutAttribute, rhs: LayoutAttribute) -> LayoutRelation {
-    return LayoutRelation(from: lhs, operator: .GreaterThanOrEqual, to: rhs)
+func >=(lhs: LayoutAttribute, rhs: LayoutAttribute) -> LayoutRelation {
+    return LayoutRelation(from: lhs, relationship: .GreaterThanOrEqual, to: rhs)
 }
 
 // Attribute-Constant relations
-@infix func ==(lhs: LayoutAttribute, rhs: Double) -> LayoutRelation {
+func ==(lhs: LayoutAttribute, rhs: Double) -> LayoutRelation {
     var to = LayoutAttribute(view: nil, attribute: .NotAnAttribute)
-    var relation = LayoutRelation(from: lhs, operator: .Equal, to: to)
+    var relation = LayoutRelation(from: lhs, relationship: .Equal, to: to)
     relation.constant = rhs
     return relation
 }
-@infix func <=(lhs: LayoutAttribute, rhs: Double) -> LayoutRelation {
+func <=(lhs: LayoutAttribute, rhs: Double) -> LayoutRelation {
     var to = LayoutAttribute(view: nil, attribute: .NotAnAttribute)
-    var relation = LayoutRelation(from: lhs, operator: .LessThanOrEqual, to: to)
+    var relation = LayoutRelation(from: lhs, relationship: .LessThanOrEqual, to: to)
     relation.constant = rhs
     return relation
 }
-@infix func >=(lhs: LayoutAttribute, rhs: Double) -> LayoutRelation {
+func >=(lhs: LayoutAttribute, rhs: Double) -> LayoutRelation {
     var to = LayoutAttribute(view: nil, attribute: .NotAnAttribute)
-    var relation = LayoutRelation(from: lhs, operator: .GreaterThanOrEqual, to: to)
+    var relation = LayoutRelation(from: lhs, relationship: .GreaterThanOrEqual, to: to)
     relation.constant = rhs
     return relation
 }
 
-@infix func ==(lhs: LayoutAttribute, rhs: Int) -> LayoutRelation {
+func ==(lhs: LayoutAttribute, rhs: Int) -> LayoutRelation {
     var to = LayoutAttribute(view: nil, attribute: .NotAnAttribute)
-    var relation = LayoutRelation(from: lhs, operator: .Equal, to: to)
+    var relation = LayoutRelation(from: lhs, relationship: .Equal, to: to)
     relation.constant = Double(rhs)
     return relation
 }
-@infix func <=(lhs: LayoutAttribute, rhs: Int) -> LayoutRelation {
+func <=(lhs: LayoutAttribute, rhs: Int) -> LayoutRelation {
     var to = LayoutAttribute(view: nil, attribute: .NotAnAttribute)
-    var relation = LayoutRelation(from: lhs, operator: .LessThanOrEqual, to: to)
+    var relation = LayoutRelation(from: lhs, relationship: .LessThanOrEqual, to: to)
     relation.constant = Double(rhs)
     return relation
 }
-@infix func >=(lhs: LayoutAttribute, rhs: Int) -> LayoutRelation {
+func >=(lhs: LayoutAttribute, rhs: Int) -> LayoutRelation {
     var to = LayoutAttribute(view: nil, attribute: .NotAnAttribute)
-    var relation = LayoutRelation(from: lhs, operator: .GreaterThanOrEqual, to: to)
+    var relation = LayoutRelation(from: lhs, relationship: .GreaterThanOrEqual, to: to)
     relation.constant = Double(rhs)
     return relation
 }
@@ -116,7 +116,7 @@ enum LayoutOption {
     case constant(Double), multiplier(Double), priority(LayoutPriority)
 }
 
-@infix func &&(var lhs: LayoutRelation, rhs: LayoutOption) -> LayoutRelation {
+func &&(var lhs: LayoutRelation, rhs: LayoutOption) -> LayoutRelation {
     switch rhs {
     case let .priority(value):      lhs.priority = value
     case let .constant(value):      lhs.constant = value
@@ -164,14 +164,12 @@ extension LayoutView {
     // Adding Constraint(s)
     
     func addConstraint(relation: LayoutRelation) -> NSLayoutConstraint {
-        
         let layoutConstraint = relation.layoutConstraint
         self.addConstraint(layoutConstraint)
         return layoutConstraint
     }
     
     func addConstraints(constraints: [LayoutRelation]) -> [NSLayoutConstraint] {
-        
         var result: [NSLayoutConstraint] = []
         for relation in constraints {
             result.append(addConstraint(relation))
@@ -221,12 +219,12 @@ class ListLayout<T: LayoutView>: Layout {
             
             switch self.orientation {
             case .Vertical:
-                axisRelations += (v.layoutTop == (prev ? prev.layoutBottom : v.superview.layoutTop)) && .priority(750)
-                offAxisRelations += [v.layoutLeft == v.superview.layoutLeft && .priority(750), v.layoutRight == v.superview.layoutRight && .priority(750)]
+                axisRelations += [(v.layoutTop == (prev ? prev.layoutBottom : v.superview!.layoutTop)) && .priority(750)]
+                offAxisRelations += [v.layoutLeft == v.superview!.layoutLeft && .priority(750), v.layoutRight == v.superview!.layoutRight && .priority(750)]
                 
             case .Horizontal:
-                axisRelations += (v.layoutLeading == (prev ? prev.layoutTrailing : v.superview.layoutLeading)) && .priority(750)
-                offAxisRelations += [v.layoutTop == v.superview.layoutTop && .priority(750), v.layoutBottom == v.superview.layoutBottom && .priority(750)]
+                axisRelations += [(v.layoutLeading == (prev ? prev.layoutTrailing : v.superview!.layoutLeading)) && .priority(750)]
+                offAxisRelations += [v.layoutTop == v.superview!.layoutTop && .priority(750), v.layoutBottom == v.superview!.layoutBottom && .priority(750)]
             }
             
             prev = v
@@ -236,9 +234,9 @@ class ListLayout<T: LayoutView>: Layout {
             if self.trailingRelationFn {
                 switch self.orientation {
                 case .Vertical:
-                    axisRelations += self.trailingRelationFn(prev.layoutBottom, prev.superview.layoutBottom) && .priority(750)
+                    axisRelations += [self.trailingRelationFn(prev.layoutBottom, prev.superview!.layoutBottom) && .priority(750)]
                 case .Horizontal:
-                    axisRelations += self.trailingRelationFn(prev.layoutTrailing, prev.superview.layoutTrailing) && .priority(750)
+                    axisRelations += [self.trailingRelationFn(prev.layoutTrailing, prev.superview!.layoutTrailing) && .priority(750)]
                 }
             }
         }
